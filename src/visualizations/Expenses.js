@@ -5,7 +5,7 @@ import _ from 'lodash';
 import chroma from 'chroma-js';
 
 var height = 600;
-var margin = { left: 40, top: 40, right: 20, bottom: 20 };
+var margin = { left: 40, top: 20, right: 40, bottom: 20 };
 var radius = 7;
 
 // d3 functions
@@ -15,17 +15,18 @@ var yScale = d3.scaleLinear().range([height - margin.bottom, margin.top]);
 var colorScale = chroma.scale(['#53cf8d', '#f7d283', '#e85151']);
 var amountScale = d3.scaleLog();
 var simulation = d3.forceSimulation()
+    // .force('charge', d3.forceManyBody(-10))
     .force('collide', d3.forceCollide(radius))
     .force('x', d3.forceX(d => d.focusX))
     .force('y', d3.forceY(d => d.focusY))
     .stop();
 
-class Expenses extends Component {
+class App extends Component {
 
     constructor(props) {
         super(props);
 
-        this.state = { selectedWeek: null }
+        this.state = { selectedWeek: null };
         this.forceTick = this.forceTick.bind(this);
     }
 
@@ -66,9 +67,8 @@ class Expenses extends Component {
                 y: yScale(week) + height,
             }
         });
-        console.log(this.weeks);
 
-        // circles for back of each day in semi circle
+        // circles for the back of each day in semi-circle
         this.days = _.map(daysOfWeek, date => {
             var [dayOfWeek, name] = date;
             var angle = Math.PI - perAngle * dayOfWeek;
@@ -90,8 +90,7 @@ class Expenses extends Component {
                     var focusY = yScale(week) + height;
 
                     if (week.getTime() === selectedWeek.getTime()) {
-                        var perAngle = Math.PI / 6;
-                        var angle = perAngle * dayOfWeek;
+                        var angle = Math.PI - perAngle * dayOfWeek;
 
                         focusX = selectedWeekRadius * Math.cos(angle) + this.props.width / 2;
                         focusY = selectedWeekRadius * Math.sin(angle) + margin.top;
@@ -110,7 +109,7 @@ class Expenses extends Component {
 
     renderCircles() {
         // draw expenses circles
-        this.circles = this.container.selectAll('circle')
+        this.circles = this.container.selectAll('.expense')
             .data(this.expenses, d => d.name);
 
         // exit
@@ -118,6 +117,7 @@ class Expenses extends Component {
 
         // enter+update
         this.circles = this.circles.enter().append('circle')
+            .classed('expense', true)
             .attr('r', radius)
             .attr('fill-opacity', 0.25)
             .attr('stroke-width', 3)
@@ -131,14 +131,14 @@ class Expenses extends Component {
             .data(this.days, d => d.name)
             .enter().append('g')
             .classed('day', true)
-            .attr('transform', d => `translate(${[d.x, d.y]})`);
+            .attr('transform', d => 'translate(' + [d.x, d.y] + ')');
 
         var daysRadius = 80;
         var fontSize = 12;
         days.append('circle')
             .attr('r', daysRadius)
             .attr('fill', '#ccc')
-            .attr('opacity', 0.25)
+            .attr('opacity', 0.25);
 
         days.append('text')
             .attr('y', daysRadius + fontSize)
@@ -168,7 +168,7 @@ class Expenses extends Component {
         weeks.append('text')
             .attr('text-anchor', 'end')
             .attr('dy', '.35em')
-            .text(d => weekFormat(d.week));
+            .text(d => weekFormat(d.week))
     }
 
     forceTick() {
@@ -179,9 +179,10 @@ class Expenses extends Component {
     render() {
         return (
             <svg width={this.props.width} height={2 * height} ref='container'>
+
             </svg>
         );
     }
 }
 
-export default Expenses;
+export default App;
