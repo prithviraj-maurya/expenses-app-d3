@@ -5,7 +5,7 @@ import _ from 'lodash';
 import chroma from 'chroma-js';
 
 var height = 600;
-var margin = { left: 40, top: 20, right: 40, bottom: 20 };
+var margin = { left: 60, top: 20, right: 40, bottom: 20 };
 var radius = 7;
 
 // d3 functions
@@ -15,24 +15,30 @@ var yScale = d3.scaleLinear().range([height - margin.bottom, margin.top]);
 var colorScale = chroma.scale(['#53cf8d', '#f7d283', '#e85151']);
 var amountScale = d3.scaleLog();
 var simulation = d3.forceSimulation()
+    .alphaDecay(0.001)
+    .velocityDecay(0.3)
     // .force('charge', d3.forceManyBody(-10))
     .force('collide', d3.forceCollide(radius))
     .force('x', d3.forceX(d => d.focusX))
     .force('y', d3.forceY(d => d.focusY))
     .stop();
+var drag = d3.drag();
 
 class App extends Component {
 
     constructor(props) {
         super(props);
 
-        this.state = { selectedWeek: null };
+        this.state = {};
         this.forceTick = this.forceTick.bind(this);
     }
 
     componentWillMount() {
         xScale.range([margin.left, this.props.width - margin.right]);
         simulation.on('tick', this.forceTick);
+        drag.on('start', this.dragStart)
+            .on('drag', this.dragExpense)
+            .on('end', this.dragEnd);
     }
 
     componentDidMount() {
@@ -47,6 +53,9 @@ class App extends Component {
 
     componentDidUpdate() {
         this.calculateData();
+        this.renderCircles();
+
+        simulation.nodes(this.props.expenses).alpha(0.9).restart();
     }
 
     calculateData() {
@@ -54,7 +63,6 @@ class App extends Component {
             d => d3.timeWeek.floor(d.date));
         yScale.domain(weeksExtent);
 
-        var selectedWeek = weeksExtent[1];
         var perAngle = Math.PI / 6;
         var selectedWeekRadius = (this.props.width - margin.left - margin.right) / 2;
 
@@ -89,7 +97,7 @@ class App extends Component {
                     var focusX = xScale(dayOfWeek);
                     var focusY = yScale(week) + height;
 
-                    if (week.getTime() === selectedWeek.getTime()) {
+                    if (week.getTime() === this.props.selectedWeek.getTime()) {
                         var angle = Math.PI - perAngle * dayOfWeek;
 
                         focusX = selectedWeekRadius * Math.cos(angle) + this.props.width / 2;
@@ -121,6 +129,7 @@ class App extends Component {
             .attr('r', radius)
             .attr('fill-opacity', 0.25)
             .attr('stroke-width', 3)
+            .call(drag)
             .merge(this.circles)
             .attr('fill', d => colorScale(amountScale(d.amount)))
             .attr('stroke', d => colorScale(amountScale(d.amount)));
@@ -168,6 +177,8 @@ class App extends Component {
         weeks.append('text')
             .attr('text-anchor', 'end')
             .attr('dy', '.35em')
+            .attr('fill', '#999')
+            .style('font-weight', 600)
             .text(d => weekFormat(d.week))
     }
 
@@ -176,11 +187,26 @@ class App extends Component {
             .attr('cy', d => d.y);
     }
 
+    dragStart() {
+        simulation.alphaTarget(0.3).restart();
+        d3.event.subject.fx = d3.event.subject.x;
+        d3.event.subject.fy = d3.event.subject.y;
+    }
+
+    dragExpense() {
+        d3.event.subject.fx = d3.event.x;
+        d3.event.subject.fy = d3.event.y;
+    }
+
+    dragEnd() {
+        if (!d3.event.active) simulation.alphaTarget(0);
+        d3.event.subject.fx = null;
+        d3.event.subject.fy = null;
+    }
+
     render() {
         return (
-            <svg width={this.props.width} height={2 * height} ref='container'>
-
-            </svg>
+            <g ref='container' />
         );
     }
 }
