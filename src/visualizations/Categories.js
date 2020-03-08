@@ -27,19 +27,24 @@ class Categories extends Component {
     componentDidMount() {
         this.container = d3.select(this.refs.container);
         this.calculateData();
+        this.renderLinks();
         this.renderCircles();
 
         simulation.nodes(this.props.categories).alpha(0.9).restart();
     }
 
     componentDidUpdate() {
+        this.calculateData();
+        this.renderLinks();
+        this.renderCircles();
 
+        simulation.nodes(this.props.categories).alpha(0.9).restart();
     }
 
     calculateData() {
         // calculate domain for radius (total $ amount of expenses)
         var radiusExtent = d3.extent(this.props.categories, category => category.total);
-        console.log(radiusExtent);
+        radiusScale.domain(radiusExtent);
 
         this.categories = _.map(this.props.categories, category => {
             return Object.assign(category, {
@@ -48,6 +53,19 @@ class Categories extends Component {
                 focusY: height / 4,
             });
         });
+    }
+
+    renderLinks() {
+        this.lines = this.container.selectAll('line')
+            .data(this.props.links);
+
+        // exit
+        this.lines.exit().remove();
+
+        // enter + update
+        this.lines = this.lines.enter().insert('line', 'g')
+            .attr('stroke', '#666')
+            .merge(this.lines);
     }
 
     renderCircles() {
@@ -78,6 +96,10 @@ class Categories extends Component {
 
     forceTick() {
         this.circles.attr('transform', d => 'translate(' + [d.x, d.y] + ')');
+        this.lines.attr('x1', d => d.source.x)
+            .attr('x2', d => d.target.x)
+            .attr('y1', d => d.source.y)
+            .attr('y2', d => d.target.y);
     }
 
     render() {

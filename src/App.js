@@ -25,6 +25,7 @@ class App extends Component {
 
     this.prevWeek = this.prevWeek.bind(this);
     this.nextWeek = this.nextWeek.bind(this);
+    this.linkToCategory = this.linkToCategory.bind(this);
   }
 
   componentWillMount() {
@@ -57,12 +58,35 @@ class App extends Component {
     this.setState({ selectedWeek });
   }
 
+  linkToCategory(expense, category) {
+    category.expenses.push(expense);
+    category.total = _.sumBy(category.expenses, 'amount');
+
+    this.forceUpdate();
+  }
+
   render() {
+    var selectedWeek = d3.timeFormat('%B %d, %Y')(this.state.selectedWeek);
+    var links = [];
+    _.each(this.state.categories, category => {
+      _.each(category.expenses, expense => {
+        // only when category's expense is in the selected week
+        if (d3.timeWeek.floor(expense.date).getTime() === this.state.selectedWeek.getTime()) {
+          // then we give it a visual link
+          links.push({
+            source: expense,
+            target: category,
+          })
+        }
+      });
+    });
+
     var props = {
       width,
+      links,
+      linkToCategory: this.linkToCategory
     };
 
-    var selectedWeek = d3.timeFormat('%B %d, %Y')(this.state.selectedWeek);
 
     return (
       <div className='App'>
@@ -72,8 +96,8 @@ class App extends Component {
           <span onClick={this.nextWeek}>→</span>
         </h2>
         <svg width={width} height={height}>
-          <Expenses {...props} {...this.state} />
           <Categories {...props} {...this.state} />
+          <Expenses {...props} {...this.state} />
         </svg>
       </div>
     );
