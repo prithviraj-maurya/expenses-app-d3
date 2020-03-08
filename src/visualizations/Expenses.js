@@ -206,8 +206,8 @@ class App extends Component {
         var expenseY = d3.event.y;
         _.each(this.props.categories, category => {
             var { x, y, radius } = category;
-            if (x - radius / 2 < expenseX && x + radius / 2 > expenseX
-                && y - radius / 2 < expenseY && y + radius / 2 > expenseY) {
+            if (x - radius < expenseX && x + radius > expenseX
+                && y - radius < expenseY && y + radius > expenseY) {
                 this.dragged = { expense, category };
 
             }

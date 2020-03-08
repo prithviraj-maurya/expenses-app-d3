@@ -7,7 +7,7 @@ import Categories from './visualizations/Categories';
 
 import expensesData from './data/expenses.json';
 
-var width = 900;
+var width = 750;
 var height = 1800;
 
 class App extends Component {
@@ -59,7 +59,11 @@ class App extends Component {
   }
 
   linkToCategory(expense, category) {
-    category.expenses.push(expense);
+    if (_.includes(category.expenses, expense)) {
+      category.expenses = _.without(category.expenses, expense);
+    } else {
+      category.expenses.push(expense);
+    }
     category.total = _.sumBy(category.expenses, 'amount');
 
     this.forceUpdate();
@@ -81,6 +85,10 @@ class App extends Component {
       });
     });
 
+    var style = {
+      width,
+      margin: 'auto',
+    }
     var props = {
       width,
       links,
@@ -89,11 +97,11 @@ class App extends Component {
 
 
     return (
-      <div className='App'>
-        <h2>
-          <span onClick={this.prevWeek}>←</span>
+      <div className='App' style={style}>
+        <h2 style={{ textAlign: 'center' }}>
+          <span onClick={this.prevWeek}>← </span>
           Week of {selectedWeek}
-          <span onClick={this.nextWeek}>→</span>
+          <span onClick={this.nextWeek}> →</span>
         </h2>
         <svg width={width} height={height}>
           <Categories {...props} {...this.state} />
