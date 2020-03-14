@@ -26,6 +26,7 @@ class App extends Component {
     this.prevWeek = this.prevWeek.bind(this);
     this.nextWeek = this.nextWeek.bind(this);
     this.linkToCategory = this.linkToCategory.bind(this);
+    this.editDate = this.editDate.bind(this);
   }
 
   componentWillMount() {
@@ -64,8 +65,12 @@ class App extends Component {
     } else {
       category.expenses.push(expense);
     }
-    category.total = _.sumBy(category.expenses, 'amount');
 
+    this.forceUpdate();
+  }
+
+  editDate(expense, day) {
+    expense.date = day.date;
     this.forceUpdate();
   }
 
@@ -73,6 +78,8 @@ class App extends Component {
     var selectedWeek = d3.timeFormat('%B %d, %Y')(this.state.selectedWeek);
     var links = [];
     _.each(this.state.categories, category => {
+      // update category total correctly
+      category.total = 0;
       _.each(category.expenses, expense => {
         // only when category's expense is in the selected week
         if (d3.timeWeek.floor(expense.date).getTime() === this.state.selectedWeek.getTime()) {
@@ -81,6 +88,7 @@ class App extends Component {
             source: expense,
             target: category,
           })
+          category.total += expense.amount;
         }
       });
     });
@@ -92,7 +100,8 @@ class App extends Component {
     var props = {
       width,
       links,
-      linkToCategory: this.linkToCategory
+      linkToCategory: this.linkToCategory,
+      editDate: this.editDate,
     };
 
 

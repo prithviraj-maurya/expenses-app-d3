@@ -6,19 +6,18 @@ import chroma from 'chroma-js';
 
 var height = 600;
 var margin = { left: 60, top: 20, right: 40, bottom: 20 };
-var radius = 7;
+var radius = 5;
 
 // d3 functions
-var daysOfWeek = [[0, 'S'], [1, 'M'], [2, 'T'], [3, 'W'], [4, 'Th'], [5, 'F'], [6, 'S']];
-var xScale = d3.scaleBand().domain(_.map(daysOfWeek, 0));
+var daysOfWeek = ['S', 'M', 'T', 'W', 'Th', 'F', 'S'];
+var xScale = d3.scaleLinear().domain([0, 6]);
 var yScale = d3.scaleLinear().range([height - margin.bottom, margin.top]);
+var amountScale = d3.scaleLinear().range([radius, 4 * radius]);
 var colorScale = chroma.scale(['#53cf8d', '#f7d283', '#e85151']);
-var amountScale = d3.scaleLog();
 var simulation = d3.forceSimulation()
     .alphaDecay(0.001)
     .velocityDecay(0.3)
-    // .force('charge', d3.forceManyBody(-10))
-    .force('collide', d3.forceCollide(radius))
+    .force('collide', d3.forceCollide(d => d.radius + 1))
     .force('x', d3.forceX(d => d.focusX))
     .force('y', d3.forceY(d => d.focusY))
     .stop();
@@ -47,7 +46,6 @@ class App extends Component {
     componentDidMount() {
         this.container = d3.select(this.refs.container);
         this.calculateData();
-        this.renderWeeks();
         this.renderDays();
         this.renderCircles();
 
@@ -65,32 +63,34 @@ class App extends Component {
         var weeksExtent = d3.extent(this.props.expenses,
             d => d3.timeWeek.floor(d.date));
         yScale.domain(weeksExtent);
+        var amountExtent = d3.extent(this.props.expenses, d => d.amount);
+        amountScale.domain(amountExtent);
 
         var perAngle = Math.PI / 6;
         var selectedWeekRadius = (this.props.width - margin.left - margin.right) / 2;
+        this.days = _.chain(this.props.expenses)
+            .groupBy(d => d3.timeDay.floor(d.date))
+            .map((expenses, date) => {
+                date = new Date(date);
+                var dayOfWeek = date.getDay();
+                var week = d3.timeWeek.floor(date);
+                var x = xScale(dayOfWeek);
+                var y = yScale(week) + height;
 
-        // rectangle for each week
-        var weeks = d3.timeWeek.range(weeksExtent[0], d3.timeWeek.offset(weeksExtent[1], 1));
-        this.weeks = _.map(weeks, week => {
-            return {
-                week,
-                x: margin.left,
-                y: yScale(week) + height,
-            }
-        });
+                if (week.getTime() === this.props.selectedWeek.getTime()) {
+                    var angle = Math.PI - perAngle * dayOfWeek;
 
-        // circles for the back of each day in semi-circle
-        this.days = _.map(daysOfWeek, date => {
-            var [dayOfWeek, name] = date;
-            var angle = Math.PI - perAngle * dayOfWeek;
-            var x = selectedWeekRadius * Math.cos(angle) + this.props.width / 2;
-            var y = selectedWeekRadius * Math.sin(angle) + margin.top;
-            return {
-                name,
-                x, y,
-            }
-        });
+                    x = selectedWeekRadius * Math.cos(angle) + this.props.width / 2;
+                    y = selectedWeekRadius * Math.sin(angle) + margin.top;
+                }
 
+                return {
+                    name: daysOfWeek[dayOfWeek],
+                    date,
+                    radius: 50,
+                    x, y,
+                };
+            }).value();
         this.expenses = _.chain(this.props.expenses)
             .groupBy(d => d3.timeWeek.floor(d.date))
             .map((expenses, week) => {
@@ -108,14 +108,14 @@ class App extends Component {
                     }
 
                     return Object.assign(exp, {
+                        radius: amountScale(exp.amount),
                         focusX,
                         focusY,
+                        x: exp.x || focusX,
+                        y: exp.y || focusY,
                     });
                 });
             }).flatten().value()
-
-        var amountExtent = d3.extent(this.expenses, d => d.amount);
-        amountScale.domain(amountExtent);
     }
 
     renderCircles() {
@@ -129,13 +129,12 @@ class App extends Component {
         // enter+update
         this.circles = this.circles.enter().append('circle')
             .classed('expense', true)
-            .attr('r', radius)
-            .attr('fill-opacity', 0.25)
-            .attr('stroke-width', 3)
+            .attr('fill', '#fff')
+            .attr('stroke-width', 1)
+            .attr('stroke', '#999')
             .call(drag)
             .merge(this.circles)
-            .attr('fill', d => colorScale(amountScale(d.amount)))
-            .attr('stroke', d => colorScale(amountScale(d.amount)));
+            .attr('r', d => d.radius);
     }
 
     renderDays() {
@@ -145,44 +144,20 @@ class App extends Component {
             .classed('day', true)
             .attr('transform', d => 'translate(' + [d.x, d.y] + ')');
 
-        var daysRadius = 80;
         var fontSize = 12;
         days.append('circle')
-            .attr('r', daysRadius)
+            .attr('r', d => d.radius)
             .attr('fill', '#ccc')
             .attr('opacity', 0.25);
 
+        var timeFormat = d3.timeFormat('%m/%d');
         days.append('text')
-            .attr('y', daysRadius + fontSize)
+            .attr('y', d => d.radius + fontSize)
             .attr('text-anchor', 'middle')
             .attr('dy', '.35em')
             .attr('fill', '#999')
             .style('font-weight', 600)
-            .text(d => d.name);
-    }
-
-    renderWeeks() {
-        var weeks = this.container.selectAll('.week')
-            .data(this.weeks, d => d.name)
-            .enter().append('g')
-            .classed('week', true)
-            .attr('transform', d => 'translate(' + [d.x, d.y] + ')');
-
-        var rectHeight = 10;
-        weeks.append('rect')
-            .attr('y', -rectHeight / 2)
-            .attr('width', this.props.width - margin.left - margin.right)
-            .attr('height', rectHeight)
-            .attr('fill', '#ccc')
-            .attr('opacity', 0.25);
-
-        var weekFormat = d3.timeFormat('%m/%d');
-        weeks.append('text')
-            .attr('text-anchor', 'end')
-            .attr('dy', '.35em')
-            .attr('fill', '#999')
-            .style('font-weight', 600)
-            .text(d => weekFormat(d.week))
+            .text(d => timeFormat(d.date));
     }
 
     forceTick() {
@@ -198,20 +173,29 @@ class App extends Component {
 
     dragExpense() {
         this.dragged = null;
+
         d3.event.subject.fx = d3.event.x;
         d3.event.subject.fy = d3.event.y;
 
         var expense = d3.event.subject;
         var expenseX = d3.event.x;
         var expenseY = d3.event.y;
+        // go through all categories to see if overlapping
         _.each(this.props.categories, category => {
             var { x, y, radius } = category;
-            if (x - radius < expenseX && x + radius > expenseX
-                && y - radius < expenseY && y + radius > expenseY) {
-                this.dragged = { expense, category };
-
+            if (x - radius < expenseX && expenseX < x + radius &&
+                y - radius < expenseY && expenseY < y + radius) {
+                this.dragged = { expense, category, type: 'category' };
             }
-        })
+        });
+        // go through all the days to see if expense overlaps
+        _.each(this.days, day => {
+            var { x, y, radius } = day;
+            if (x - radius < expenseX && expenseX < x + radius &&
+                y - radius < expenseY && expenseY < y + radius) {
+                this.dragged = { expense, day, type: 'day' };
+            }
+        });
     }
 
     dragEnd() {
@@ -219,9 +203,12 @@ class App extends Component {
         d3.event.subject.fx = null;
         d3.event.subject.fy = null;
 
-        if (this.dragged) {
+        if (this.dragged && this.dragged.type === 'category') {
             var { expense, category } = this.dragged;
             this.props.linkToCategory(expense, category);
+        } else if (this.dragged && this.dragged.type === 'day') {
+            var { expense, day } = this.dragged;
+            this.props.editDate(expense, day);
         }
         this.dragged = null;
     }
