@@ -4,8 +4,8 @@ import _ from 'lodash';
 
 import chroma from 'chroma-js';
 
-var height = 600;
-var margin = { left: 60, top: 20, right: 40, bottom: 20 };
+var height = 650;
+var margin = { left: 40, top: 20, right: 40, bottom: 20 };
 var radius = 5;
 
 // d3 functions
@@ -13,6 +13,7 @@ var daysOfWeek = ['S', 'M', 'T', 'W', 'Th', 'F', 'S'];
 var xScale = d3.scaleLinear().domain([0, 6]);
 var yScale = d3.scaleLinear().range([height - margin.bottom, margin.top]);
 var amountScale = d3.scaleLinear().range([radius, 4 * radius]);
+var dayScale = d3.scaleLog();
 var colorScale = chroma.scale(['#53cf8d', '#f7d283', '#e85151']);
 var simulation = d3.forceSimulation()
     .alphaDecay(0.001)
@@ -67,30 +68,34 @@ class App extends Component {
         amountScale.domain(amountExtent);
 
         var perAngle = Math.PI / 6;
-        var selectedWeekRadius = (this.props.width - margin.left - margin.right) / 2;
-        this.days = _.chain(this.props.expenses)
-            .groupBy(d => d3.timeDay.floor(d.date))
-            .map((expenses, date) => {
-                date = new Date(date);
-                var dayOfWeek = date.getDay();
-                var week = d3.timeWeek.floor(date);
-                var x = xScale(dayOfWeek);
-                var y = yScale(week) + height;
+        var selectedWeekRadius = this.props.width * 0.3;
+        this.days = _.groupBy(this.props.expenses, d => d3.timeDay.floor(d.date));
+        var dayExtent = d3.extent(_.values(this.days),
+            expenses => _.sumBy(expenses, d => d.amount));
+        dayScale.domain(dayExtent);
 
-                if (week.getTime() === this.props.selectedWeek.getTime()) {
-                    var angle = Math.PI - perAngle * dayOfWeek;
+        this.days = _.map(this.days, (expenses, date) => {
+            date = new Date(date);
+            var dayOfWeek = date.getDay();
+            var week = d3.timeWeek.floor(date);
+            var x = xScale(dayOfWeek);
+            var y = yScale(week) + height;
 
-                    x = selectedWeekRadius * Math.cos(angle) + this.props.width / 2;
-                    y = selectedWeekRadius * Math.sin(angle) + margin.top;
-                }
+            if (week.getTime() === this.props.selectedWeek.getTime()) {
+                var angle = Math.PI - perAngle * dayOfWeek;
 
-                return {
-                    name: daysOfWeek[dayOfWeek],
-                    date,
-                    radius: 50,
-                    x, y,
-                };
-            }).value();
+                x = selectedWeekRadius * Math.cos(angle) + this.props.width / 2;
+                y = selectedWeekRadius * Math.sin(angle) + margin.top;
+            }
+
+            return {
+                name: daysOfWeek[dayOfWeek],
+                date,
+                radius: 55,
+                fill: colorScale(dayScale(_.sumBy(expenses, 'amount'))),
+                x, y,
+            };
+        });
         this.expenses = _.chain(this.props.expenses)
             .groupBy(d => d3.timeWeek.floor(d.date))
             .map((expenses, week) => {
@@ -130,7 +135,6 @@ class App extends Component {
         this.circles = this.circles.enter().append('circle')
             .classed('expense', true)
             .attr('fill', '#fff')
-            .attr('stroke-width', 1)
             .attr('stroke', '#999')
             .call(drag)
             .merge(this.circles)
@@ -139,24 +143,35 @@ class App extends Component {
 
     renderDays() {
         var days = this.container.selectAll('.day')
-            .data(this.days, d => d.name)
-            .enter().append('g')
-            .classed('day', true)
-            .attr('transform', d => 'translate(' + [d.x, d.y] + ')');
+            .data(this.days, d => d.date);
 
-        var fontSize = 12;
-        days.append('circle')
-            .attr('r', d => d.radius)
-            .attr('fill', '#ccc')
-            .attr('opacity', 0.25);
+        days.exit().remove();
 
-        var timeFormat = d3.timeFormat('%m/%d');
-        days.append('text')
-            .attr('y', d => d.radius + fontSize)
+        // enter
+        var enter = days.enter().append('g')
+            .classed('day', true);
+        enter.append('rect')
+            .attr('fill-opacity', 0.5);
+        enter.append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', '.35em')
             .attr('fill', '#999')
-            .style('font-weight', 600)
+            .style('font-weight', 600);
+
+        days = enter.merge(days)
+            .attr('transform', d => 'translate(' + [d.x, d.y] + ')');
+
+        days.select('rect')
+            .attr('width', d => 2 * d.radius)
+            .attr('height', d => 2 * d.radius)
+            .attr('x', d => -d.radius)
+            .attr('y', d => -d.radius)
+            .attr('fill', d => d.fill);
+
+        var fontSize = 12;
+        var timeFormat = d3.timeFormat('%m/%d');
+        days.select('text')
+            .attr('y', d => d.radius + fontSize)
             .text(d => timeFormat(d.date));
     }
 
