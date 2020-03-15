@@ -1,0 +1,24 @@
+{
+  "files": {
+    "main.css": "/react-expenses-app/static/css/main.c44fd510.chunk.css",
+    "main.js": "/react-expenses-app/static/js/main.0bfb44bf.chunk.js",
+    "main.js.map": "/react-expenses-app/static/js/main.0bfb44bf.chunk.js.map",
+    "runtime-main.js": "/react-expenses-app/static/js/runtime-main.64b99e71.js",
+    "runtime-main.js.map": "/react-expenses-app/static/js/runtime-main.64b99e71.js.map",
+    "static/js/2.cefd8717.chunk.js": "/react-expenses-app/static/js/2.cefd8717.chunk.js",
+    "static/js/2.cefd8717.chunk.js.map": "/react-expenses-app/static/js/2.cefd8717.chunk.js.map",
+    "index.html": "/react-expenses-app/index.html",
+    "precache-manifest.58a8f83902ad2b1a603ee9c76474a3b1.js": "/react-expenses-app/precache-manifest.58a8f83902ad2b1a603ee9c76474a3b1.js",
+    "service-worker.js": "/react-expenses-app/service-worker.js",
+    "static/css/main.c44fd510.chunk.css.map": "/react-expenses-app/static/css/main.c44fd510.chunk.css.map",
+    "static/js/2.cefd8717.chunk.js.LICENSE": "/react-expenses-app/static/js/2.cefd8717.chunk.js.LICENSE",
+    "static/media/App.css": "/react-expenses-app/static/media/LibreBaskerville-Regular.27b9efe7.ttf",
+    "static/media/delete.svg": "/react-expenses-app/static/media/delete.b6937761.svg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.64b99e71.js",
+    "static/js/2.cefd8717.chunk.js",
+    "static/css/main.c44fd510.chunk.css",
+    "static/js/main.0bfb44bf.chunk.js"
+  ]
+}
